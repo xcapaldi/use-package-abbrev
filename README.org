@@ -1,0 +1,95 @@
+#+TITLE: use-package-abbrev
+#+AUTHOR: Xavier Capaldi
+
+Primitive [[https://github.com/jwiegley/use-package][use-package]] keyword extension that accepts a file path to an elisp file defining a set of abbrevs. I've written a very similar extension that can instead load arbitrary elisp files: [[https://github.com/xcapaldi/use-package-load][use-package-load]]
+
+* Installation
+** manual
+Download ~use-package-abbrev.el~ from this repository to your loadpath and include ~(require 'use-package-abbrev)~ in your ~init.el~ file.
+
+You can (and should) use the following ~use-package~ declaration:
+
+#+BEGIN_SRC emacs-lisp
+  (use-package use-package-abbrev
+    :ensure nil
+    :load-path "~/path/to/use-package-abbrev.el")
+#+END_SRC
+
+** straight.el
+Alternatively if you use [[https://github.com/raxod502/straight.el][straight.el]] as your package manager, you can point it directly to the repository.
+
+#+BEGIN_SRC emacs-lisp
+  (use-package use-package-abbrev
+    :straight (use-package-abbrev :type git :host github :repo "xcapaldi/use-package-abbrev"))
+#+END_SRC
+
+* Usage
+Simply add the ~:abbrev~ keyword to your use-package declaration with the path to the abbrev file.
+The file will be loaded with ~read-abbrev-file~.
+This keyword simply allows you to represent something like this:
+
+#+BEGIN_SRC emacs-lisp
+  (use-package python
+    :config
+    (read-abbrev-file "path/to/abbrevs.el" t))
+#+END_SRC
+
+As this:
+
+#+BEGIN_SRC emacs-lisp
+  (use-package python
+    :abbrev "path/to/abbrevs.el")
+#+END_SRC
+
+* Suggested usage
+Abbrevs are a powerful feature in emacs but there any many potential workflows.
+I suggest using the following workflow which allows you to keep your abbrevs modular without polluting your config with massive lists.
+It also allows you to retain the full functionality of abbrevs.
+I use the built-in python mode along with [[https://github.com/pythonic-emacs/blacken][blacken]] which is a minor mode for python as an example.
+Let's assume we want to have some abbrevs specific to python mode and some additional abbrevs that are specific to python mode but only if we have ~blacken~.
+
+Create a file (perhaps ~abbrevs/python.el~) in which you'll define your abbrevs.
+Add a initial statement to clear the current abbrev settings (not strictly required).
+Add some abbrev definitions to the *proper* abbrev table.
+I recommend (if you're using a literate config) that this is tangled directly by added the ~:tangle abbrevs/python.el~ to the source block header.
+
+#+BEGIN_SRC emacs-lisp
+  ;;-*-coding: utf-8;-*-
+  (when (boundp 'python-mode-abbrev-table)
+    (clear-abbrev-table python-mode-abbrev-table))
+  
+  (define-abbrev-table 'python-mode-abbrev-table
+    '(
+      ("snek" "python" nil)
+      ("todo" "# TODO: " nil)
+      ))
+#+END_SRC
+
+Now pass the path to this file in your ~use-package~ declaration for python:
+
+#+BEGIN_SRC emacs-lisp
+  (use-package python
+    :abbrev "abbrevs/python.el")
+#+END_SRC
+
+If you want to add some special abbrevs for ~blacken~, create another abbrev file (~abbrevs/blacken.el~).
+Omit the clearing of the old table.
+Usually since ~blacken~ requires ~python-mode~ the table should always already be defined.
+~define-abbrev-table~ is an additive process so don't worry about overwriting other abbreviations.
+
+#+BEGIN_SRC emacs-lisp
+  ;;-*-coding: utf-8;-*-
+  (define-abbrev-table 'python-mode-abbrev-table
+    '(
+      ("black" "Made with blacken!" nil)
+      ))
+#+END_SRC
+
+Now pass to the ~blacken~ ~use-package~ declaration:
+
+#+BEGIN_SRC emacs-lisp
+  (use-package blacken
+    :abbrev "abbrevs/blacken.el")
+#+END_SRC
+
+Since we've split the abbrev files like this, the ~black~ abbrev will only be present after we've enabled the ~blacken~ minor mode.
